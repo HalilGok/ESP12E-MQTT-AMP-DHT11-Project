@@ -1,29 +1,33 @@
+        /* İSTANBUL'A */
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include <dht11.h>
 
+LiquidCrystal_I2C lcd(0x27, 20, 4);
 WiFiClient espClient;
 PubSubClient client(espClient);
-dht11 DHT11;
 
-const char* WIFI_NAME = "***";
-const char* WIFI_PASSWORD = "***";
+#define LED_SW D0
+
+const char* WIFI_NAME = "**********";
+const char* WIFI_PASSWORD = "**********";
 const int port = 1883;
-const char* IP = "***";
-const char* userName = "****";
-const char* password = "****";
-const int DHT11Pin = 12;
-const int LedPin = 2;
+const char* IP = "**********";
+const char* userName = "**********";
+const char* password = "**********";
 char msgMqtt[50];
 
+void ShowLCD();
 void MQTT_Server_Connect();
 void call_Back(char* topic, byte* payload, unsigned int length);
-float dht11_read_Temp(int pin);
-float dht11_read_Hum(int pin);
 
-void setup() {
-  pinMode(LedPin,OUTPUT);
-  digitalWrite(LedPin,HIGH);
+String temperature ="";
+String humidity="";
+
+void setup(){
+  pinMode(LED_SW,OUTPUT);
+  digitalWrite(LED_SW,LOW);
   Serial.begin(9600);
   WiFi.disconnect();
   delay(2000);
@@ -39,17 +43,15 @@ void setup() {
   Serial.println((WiFi.localIP().toString()));
   client.setServer(IP, port);
   client.setCallback(call_Back);
-
+  lcd.begin();
 }
-void loop() {
 
-  if(!client.connected())
+void loop(){
+ if(!client.connected())
   {
     MQTT_Server_Connect();
- 
   }
-  client.loop();
-
+  client.loop();  
 }
 
 void MQTT_Server_Connect()
@@ -75,6 +77,7 @@ void MQTT_Server_Connect()
     }
   }
 }
+
 void call_Back(char* topic, byte* payload, unsigned int length) 
 { 
   String MQTT_DATA ="";
@@ -83,31 +86,31 @@ void call_Back(char* topic, byte* payload, unsigned int length)
     MQTT_DATA +=(char)payload[i];  
   }
   
-  if ((MQTT_DATA == "TEMPERATURE") && ((String)topic == "/gokhalil723@gmail.com/TEMPERATURE") )
+  if (((String)topic == "/gokhalil723@gmail.com/TEMPERATURE"))
   {
-    snprintf(msgMqtt ,50,"%2.f",dht11_read_Temp(DHT11Pin));
-    client.publish("/gokhalil723@gmail.com/TEMPERATURE",msgMqtt);
+    temperature=MQTT_DATA;
+    ShowLCD();
     MQTT_DATA ="";
     delay(100);
      (String)topic = "";  
-  }
-    if ((MQTT_DATA == "HUMIDITY") && ((String)topic == "/gokhalil723@gmail.com/HUMIDITY")  )
+  }  
+    if (((String)topic == "/gokhalil723@gmail.com/HUMIDITY"))
   {
-    snprintf(msgMqtt ,50,"%2.f",dht11_read_Hum(DHT11Pin));
-    client.publish("/gokhalil723@gmail.com/HUMIDITY",msgMqtt);
+    humidity=MQTT_DATA;
+    ShowLCD();
     MQTT_DATA ="";
     delay(100);
   (String)topic = "";  
-  }
+  } 
    if ((MQTT_DATA == "LED ON") && ((String)topic == "/gokhalil723@gmail.com/LED")) 
    {
-    digitalWrite(LedPin,LOW); //  because the led is connected in reverse
+    digitalWrite(LED_SW,HIGH); //  because the led is connected in reverse
     delay(50);
    (String)topic = ""; 
    MQTT_DATA="";
   }
-  if ((MQTT_DATA =="LED OFF")  && ((String)topic == "/gokhalil723@gmail.com/LED") ) {
-    digitalWrite(LedPin,HIGH);
+  if ((MQTT_DATA =="LED OFF")  && ((String)topic == "/gokhalil723@gmail.com/LED")){
+    digitalWrite(LED_SW,LOW);
     delay(50);
     
    (String)topic = "";  
@@ -118,13 +121,18 @@ void call_Back(char* topic, byte* payload, unsigned int length)
     MQTT_DATA="";
 }
 
-float dht11_read_Temp(int pin)
-{
-   int chk = DHT11.read(DHT11Pin);
-   return ((float)DHT11.temperature);
-}
-float dht11_read_Hum(int pin)
-{
-   int chk = DHT11.read(DHT11Pin);
-   return ((float)DHT11.humidity);
+void ShowLCD(){ 
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("TEMPERATURE: ");
+  lcd.setCursor(13,0);
+  lcd.print(temperature);
+ 
+  lcd.setCursor(0,1);
+  lcd.print("HUMIDITY : ");
+  lcd.setCursor(11,1);
+  lcd.print("%");
+  lcd.setCursor(12,1);
+  lcd.print(humidity);
+  delay(300);
 }
